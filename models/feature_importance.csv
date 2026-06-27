@@ -1,0 +1,31 @@
+feature,importance
+Bought_Two_Sizes,0.10582307
+Review_Score,0.09094169
+Category_Clothing,0.087974876
+Product_ID_Freq,0.046790626
+Category_Electronics,0.044111706
+Expected_Delivery_Days,0.038382445
+Category_Beauty,0.037198167
+Discount_Percentage,0.036334213
+Is_Holiday_Season,0.034941554
+Category_Books,0.03382626
+Category_Home & Kitchen,0.027319985
+ZIP_Code_Freq,0.02730829
+Order_DayOfWeek,0.02593508
+Category_Footwear,0.025471466
+Customer_Return_Ratio,0.02527325
+Shipping_Method_Economy,0.024837807
+Carrier_USPS,0.021931821
+Order_Month,0.021761963
+Is_Weekend_Order,0.021704169
+Has_Discount,0.021666547
+Carrier_FedEx,0.021636138
+Account_Age_Days,0.021528898
+Price,0.021192987
+Shipping_Method_Express,0.021010472
+Category_Toys,0.0207448
+Carrier_UPS,0.019326868
+Carrier_BlueDart,0.01922999
+Shipping_Method_Next Day,0.019148014
+Carrier_DHL,0.018417796
+Shipping_Method_Standard,0.01822916
