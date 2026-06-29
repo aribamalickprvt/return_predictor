@@ -157,7 +157,7 @@ def main():
     customers = generate_customers(N_CUSTOMERS)
     orders = generate_orders(customers, N_ORDERS)
 
-    output_path = "/home/claude/return_predictor/data/ecommerce_returns.csv"
+    output_path = "/return_predictor/data/ecommerce_returns.csv"
     orders.to_csv(output_path, index=False)
 
     print(f"Dataset saved: {output_path}")
