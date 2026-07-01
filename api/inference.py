@@ -10,13 +10,11 @@ from notebooks.preprocessing import preprocess_single
 logger = get_logger(__name__)
 
 def load_model():
-    """Loads and caches the trained XGBoost model."""
     logger.info(f"Loading model from {MODEL_ARTIFACT_PATH}")
     model = joblib.load(MODEL_ARTIFACT_PATH)
     return model
 
 def classify_risk(prob: float) -> tuple[str, str]:
-    """Maps a probability to a risk tier and recommended action."""
     if prob < LOW_RISK_THRESHOLD:
         return "LOW", "Standard fulfillment — no intervention needed."
     elif prob < HIGH_RISK_THRESHOLD:
