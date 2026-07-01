@@ -1,43 +1,23 @@
-"""
-Streamlit Dashboard — Smart Return Predictor
-=============================================
-Interactive business dashboard for predicting e-commerce returns.
-Calls the FastAPI backend to get predictions.
-"""
-
 import sys
 import json
 from pathlib import Path
 from datetime import date, timedelta
-
 import streamlit as st
 import pandas as pd
 import requests
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
 from utils.config import (
     API_PORT, LOW_RISK_THRESHOLD, HIGH_RISK_THRESHOLD,
     MODEL_ARTIFACT_PATH,
 )
-
 API_BASE = f"http://127.0.0.1:{API_PORT}"
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Page config
-# ─────────────────────────────────────────────────────────────────────────────
-
 st.set_page_config(
     page_title="Smart Return Predictor",
     page_icon="🛍️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Custom CSS
-# ─────────────────────────────────────────────────────────────────────────────
-
+#css
 st.markdown("""
 <style>
     .main { background-color: #0f1117; }
@@ -84,25 +64,16 @@ st.markdown("""
     .stButton > button:hover { opacity: 0.88; }
 </style>
 """, unsafe_allow_html=True)
-
-# ─────────────────────────────────────────────────────────────────────────────
 # Header
-# ─────────────────────────────────────────────────────────────────────────────
-
 st.markdown("# 🛍️ Smart Return Predictor")
 st.markdown(
     "**Demarketing Engine** — Predict whether a customer will return a purchased item "
     "before it ships, and take targeted action to reduce reverse logistics costs."
 )
 st.divider()
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Sidebar — API status & model info
-# ─────────────────────────────────────────────────────────────────────────────
-
+# Sidebar 
 with st.sidebar:
     st.markdown("### ⚙️ System Status")
-
     try:
         resp = requests.get(f"{API_BASE}/health", timeout=3)
         health = resp.json()
@@ -134,21 +105,15 @@ with st.sidebar:
         fi_df = pd.read_csv(fi_path).head(10)
         st.bar_chart(fi_df.set_index("feature")["importance"])
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Main form — two columns
-# ─────────────────────────────────────────────────────────────────────────────
-
 col_left, col_right = st.columns([1, 1], gap="large")
-
 with col_left:
     st.markdown('<p class="section-header">🧑 Customer Profile</p>', unsafe_allow_html=True)
-
     customer_id = st.text_input("Customer ID", value="CUST_00042")
     zip_code = st.text_input("ZIP Code", value="10001")
     account_age = st.slider("Account Age (days)", 30, 2000, 365)
     past_purchases = st.number_input("Past Purchases", min_value=1, max_value=500, value=15)
     past_returns = st.number_input("Past Returns", min_value=0, max_value=500, value=2)
-
     st.markdown('<p class="section-header" style="margin-top:1.2rem">📦 Product Details</p>', unsafe_allow_html=True)
 
     category = st.selectbox(
@@ -181,20 +146,14 @@ with col_right:
 
     return_reason = st.text_input("Return Reason (if known)", value="")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Predict button
-# ─────────────────────────────────────────────────────────────────────────────
-
+# Predict button 
 st.divider()
 predict_col, _ = st.columns([1, 2])
 
 with predict_col:
     predict_clicked = st.button("🔮 Predict Return Probability")
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Results
-# ─────────────────────────────────────────────────────────────────────────────
-
 if predict_clicked:
     payload = {
         "Customer_ID": customer_id,
@@ -303,10 +262,7 @@ if predict_clicked:
         except Exception as e:
             st.error(f"❌ Unexpected error: {e}")
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Batch prediction section
-# ─────────────────────────────────────────────────────────────────────────────
-
 st.divider()
 with st.expander("📂 Batch Prediction (Upload CSV)"):
     st.markdown("Upload a CSV file with the same columns as the prediction form to run bulk predictions.")
