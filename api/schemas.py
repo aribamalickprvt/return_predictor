@@ -1,15 +1,12 @@
 """
 Pydantic schemas for FastAPI request validation and response serialization.
 """
-
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date
 
-
 class PredictionRequest(BaseModel):
     """Input payload for a single return prediction."""
-
     Customer_ID: str = Field(default="CUST_00001", example="CUST_00001")
     ZIP_Code: str = Field(default="10001", example="10001")
     Account_Age_Days: int = Field(default=365, ge=1, example=365)
@@ -29,10 +26,8 @@ class PredictionRequest(BaseModel):
     Return_Reason: str = Field(default="", example="")
     Is_Returned: int = Field(default=0, ge=0, le=1, example=0)
 
-
 class PredictionResponse(BaseModel):
     """Response payload containing return probability and risk tier."""
-
     return_probability: float = Field(description="Probability of return (0–1)")
     risk_tier: str = Field(description="LOW | MEDIUM | HIGH")
     recommended_action: str = Field(description="Suggested demarketing action")
