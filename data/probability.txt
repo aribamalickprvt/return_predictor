@@ -1,0 +1,6 @@
+Base Return Chance: 10%  
+    +35% if the customer historically returns items frequently
+   +45% if they ordered two sizes of the same clothing item
+    +20% if the product's review score is bad (2 stars or less)
+    +8%  if the shipping carrier delayed the package past 7 days
+    -5%  if it's a high-priced luxury item (deliberate purchase)
