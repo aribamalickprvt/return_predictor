@@ -1,6 +1,5 @@
 """
 Preprocessing Pipeline
-======================
 Handles:
   - Missing value imputation (carrier-aware for delivery dates)
   - IQR-based outlier capping for price
@@ -9,7 +8,6 @@ Handles:
   - One-hot encoding for low-cardinality categoricals
   - RobustScaler for numeric features
 """
-
 import numpy as np
 import pandas as pd
 import joblib
@@ -19,32 +17,19 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import RobustScaler, OneHotEncoder
 from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
-
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
 from utils.config import (
     RAW_DATA_PATH, PROCESSED_DATA_PATH, ENCODER_PATH,
     NUMERIC_FEATURES, CATEGORICAL_OHE_FEATURES,
     HIGH_CARDINALITY_FEATURES, BINARY_FEATURES, TARGET_COLUMN,
 )
 from utils.logger import get_logger
-
 logger = get_logger(__name__)
-
 HOLIDAY_MONTHS = {11, 12, 1}  # Nov, Dec, Jan
-
-
-# ─────────────────────────────────────────────────────────────────────────────
 # Custom Transformers
-# ─────────────────────────────────────────────────────────────────────────────
-
 class DeliveryDateImputer(BaseEstimator, TransformerMixin):
-    """
-    Imputes missing Delivery_Date using the median delivery duration
-    per carrier observed in the training data.
-    """
-
+   # Imputes missing Delivery_Date using the median delivery duration
     def fit(self, X: pd.DataFrame, y=None):
         df = X.copy()
         df["Order_Date"] = pd.to_datetime(df["Order_Date"])
@@ -110,15 +95,13 @@ class FeatureEngineer(BaseEstimator, TransformerMixin):
         df["Has_Discount"] = (df["Discount_Percentage"] > 0).astype(int)
 
         return df
-
-
+      
 class IQROutlierCapper(BaseEstimator, TransformerMixin):
     """Caps outliers in specified columns using the IQR method (train-fit)."""
 
     def __init__(self, columns: list[str], factor: float = 1.5):
         self.columns = columns
         self.factor = factor
-
     def fit(self, X: pd.DataFrame, y=None):
         self.bounds_ = {}
         for col in self.columns:
@@ -127,7 +110,6 @@ class IQROutlierCapper(BaseEstimator, TransformerMixin):
             iqr = q3 - q1
             self.bounds_[col] = (q1 - self.factor * iqr, q3 + self.factor * iqr)
         return self
-
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         df = X.copy()
         for col, (lower, upper) in self.bounds_.items():
@@ -137,24 +119,20 @@ class IQROutlierCapper(BaseEstimator, TransformerMixin):
             if capped > 0:
                 logger.info(f"IQR capping '{col}': {capped} values clipped.")
         return df
-
-
+      
 class FrequencyEncoder(BaseEstimator, TransformerMixin):
     """
     Encodes high-cardinality categoricals by mapping each value
     to its frequency in the training set.
     """
-
     def __init__(self, columns: list[str]):
         self.columns = columns
-
     def fit(self, X: pd.DataFrame, y=None):
         self.freq_maps_ = {}
         n = len(X)
         for col in self.columns:
             self.freq_maps_[col] = X[col].value_counts(normalize=True).to_dict()
         return self
-
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         df = X.copy()
         for col in self.columns:
@@ -162,22 +140,16 @@ class FrequencyEncoder(BaseEstimator, TransformerMixin):
             df.drop(columns=[col], inplace=True)
         return df
 
-
-# ─────────────────────────────────────────────────────────────────────────────
 # Column Transformer (Sklearn-native for numeric + OHE)
-# ─────────────────────────────────────────────────────────────────────────────
-
 def build_column_transformer() -> ColumnTransformer:
     numeric_pipeline = Pipeline([
         ("imputer", SimpleImputer(strategy="median")),
         ("scaler", RobustScaler()),
     ])
-
     categorical_pipeline = Pipeline([
         ("imputer", SimpleImputer(strategy="most_frequent")),
         ("ohe", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
     ])
-
     return ColumnTransformer(
         transformers=[
             ("num", numeric_pipeline, NUMERIC_FEATURES),
@@ -187,39 +159,25 @@ def build_column_transformer() -> ColumnTransformer:
         remainder="drop",
     )
 
-
-# ─────────────────────────────────────────────────────────────────────────────
 # Full Preprocessing Flow (returns X, y as numpy arrays)
-# ─────────────────────────────────────────────────────────────────────────────
-
 def load_and_preprocess(
     path: Path = RAW_DATA_PATH,
     fit_encoders: bool = True,
     encoder_path: Path = ENCODER_PATH,
 ) -> tuple[np.ndarray, np.ndarray, ColumnTransformer]:
     """
-    Runs the full preprocessing pipeline.
-
-    Returns:
-        X_transformed (np.ndarray), y (np.ndarray), column_transformer (fitted)
+    runnn preprocessing pipeline.
+    Returns:  X_transformed (np.ndarray), y (np.ndarray), column_transformer (fitted)
     """
     logger.info(f"Loading data from {path}")
     df = pd.read_csv(path)
     logger.info(f"Raw data shape: {df.shape}")
-
-    # ── Step 1: Impute delivery dates ──────────────────────────────────────────
     imputer = DeliveryDateImputer()
     df = imputer.fit_transform(df)
-
-    # ── Step 2: Feature engineering ────────────────────────────────────────────
     engineer = FeatureEngineer()
     df = engineer.fit_transform(df)
-
-    # ── Step 3: IQR capping on Price ──────────────────────────────────────────
     capper = IQROutlierCapper(columns=["Price"])
     df = capper.fit_transform(df)
-
-    # ── Step 4: Frequency encode high-cardinality columns ─────────────────────
     freq_encoder = FrequencyEncoder(columns=HIGH_CARDINALITY_FEATURES)
     if fit_encoders:
         df = freq_encoder.fit_transform(df)
@@ -234,19 +192,14 @@ def load_and_preprocess(
         saved = joblib.load(encoder_path)
         freq_encoder = saved["freq_encoder"]
         df = freq_encoder.transform(df)
-
     # Update BINARY_FEATURES list: add freq-encoded columns
     freq_cols = [f"{c}_Freq" for c in HIGH_CARDINALITY_FEATURES]
-
-    # ── Step 5: Build column transformer ──────────────────────────────────────
+    #  Build column transformer  
     ct = build_column_transformer()
-
     # Add freq columns to binary (passthrough) section dynamically
     ct.transformers[-1] = ("bin", "passthrough", BINARY_FEATURES + freq_cols)
-
-    # ── Step 6: Extract target ────────────────────────────────────────────────
+                  # Extract target
     y = df[TARGET_COLUMN].values
-
     if fit_encoders:
         X_transformed = ct.fit_transform(df)
         joblib.dump(ct, encoder_path.parent / "column_transformer.joblib")
@@ -258,7 +211,6 @@ def load_and_preprocess(
     logger.info(f"Return rate: {y.mean():.2%}")
     return X_transformed, y, ct
 
-
 def preprocess_single(input_dict: dict, encoder_path: Path = ENCODER_PATH) -> np.ndarray:
     """
     Preprocesses a single prediction input dict using saved encoders.
@@ -266,19 +218,14 @@ def preprocess_single(input_dict: dict, encoder_path: Path = ENCODER_PATH) -> np
     """
     saved = joblib.load(encoder_path)
     ct = joblib.load(encoder_path.parent / "column_transformer.joblib")
-
     df = pd.DataFrame([input_dict])
-
     df = saved["delivery_imputer"].transform(df)
     df = saved["feature_engineer"].transform(df)
     df = saved["outlier_capper"].transform(df)
     df = saved["freq_encoder"].transform(df)
-
     freq_cols = [f"{c}_Freq" for c in HIGH_CARDINALITY_FEATURES]
     ct.transformers[-1] = ("bin", "passthrough", BINARY_FEATURES + freq_cols)
-
     return ct.transform(df)
-
 
 if __name__ == "__main__":
     Path(ENCODER_PATH).parent.mkdir(parents=True, exist_ok=True)
