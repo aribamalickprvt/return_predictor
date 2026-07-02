@@ -1,13 +1,3 @@
-"""
-Preprocessing Pipeline
-Handles:
-  - Missing value imputation (carrier-aware for delivery dates)
-  - IQR-based outlier capping for price
-  - Feature engineering (return ratio, size-mismatch, temporal features)
-  - Target encoding for high-cardinality columns
-  - One-hot encoding for low-cardinality categoricals
-  - RobustScaler for numeric features
-"""
 import numpy as np
 import pandas as pd
 import joblib
@@ -27,9 +17,8 @@ from utils.config import (
 from utils.logger import get_logger
 logger = get_logger(__name__)
 HOLIDAY_MONTHS = {11, 12, 1}  # Nov, Dec, Jan
-# Custom Transformers
+
 class DeliveryDateImputer(BaseEstimator, TransformerMixin):
-   # Imputes missing Delivery_Date using the median delivery duration
     def fit(self, X: pd.DataFrame, y=None):
         df = X.copy()
         df["Order_Date"] = pd.to_datetime(df["Order_Date"])
@@ -42,12 +31,11 @@ class DeliveryDateImputer(BaseEstimator, TransformerMixin):
         )
         self.global_median_ = df["_duration"].median()
         return self
-
+      
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         df = X.copy()
         df["Order_Date"] = pd.to_datetime(df["Order_Date"])
         df["Delivery_Date"] = pd.to_datetime(df["Delivery_Date"])
-
         mask = df["Delivery_Date"].isna()
         if mask.sum() > 0:
             logger.info(f"Imputing {mask.sum()} missing Delivery_Date values.")
@@ -57,48 +45,30 @@ class DeliveryDateImputer(BaseEstimator, TransformerMixin):
                 df.at[idx, "Delivery_Date"] = df.at[idx, "Order_Date"] + pd.Timedelta(days=days)
         return df
 
-
 class FeatureEngineer(BaseEstimator, TransformerMixin):
-    """
-    Creates domain-specific features:
-      - Customer_Return_Ratio
-      - Expected_Delivery_Days
-      - Is_Weekend_Order, Is_Holiday_Season, Has_Discount
-      - Temporal: Order_Month, Order_DayOfWeek
-    """
-
     def fit(self, X: pd.DataFrame, y=None):
         return self
-
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         df = X.copy()
-
         # Dates
         order_dt = pd.to_datetime(df["Order_Date"])
         delivery_dt = pd.to_datetime(df["Delivery_Date"])
-
         # Customer return ratio (avoids division by zero)
         df["Customer_Return_Ratio"] = (
             df["Past_Returns"] / df["Past_Purchases"].clip(lower=1)
         ).round(4)
-
         # Delivery duration feature
         df["Expected_Delivery_Days"] = (delivery_dt - order_dt).dt.days.clip(lower=0)
-
         # Temporal features
         df["Order_Month"] = order_dt.dt.month
         df["Order_DayOfWeek"] = order_dt.dt.dayofweek
         df["Is_Weekend_Order"] = (df["Order_DayOfWeek"] >= 5).astype(int)
         df["Is_Holiday_Season"] = order_dt.dt.month.isin(HOLIDAY_MONTHS).astype(int)
-
         # Discount flag
         df["Has_Discount"] = (df["Discount_Percentage"] > 0).astype(int)
-
         return df
       
 class IQROutlierCapper(BaseEstimator, TransformerMixin):
-    """Caps outliers in specified columns using the IQR method (train-fit)."""
-
     def __init__(self, columns: list[str], factor: float = 1.5):
         self.columns = columns
         self.factor = factor
@@ -121,10 +91,6 @@ class IQROutlierCapper(BaseEstimator, TransformerMixin):
         return df
       
 class FrequencyEncoder(BaseEstimator, TransformerMixin):
-    """
-    Encodes high-cardinality categoricals by mapping each value
-    to its frequency in the training set.
-    """
     def __init__(self, columns: list[str]):
         self.columns = columns
     def fit(self, X: pd.DataFrame, y=None):
@@ -139,8 +105,7 @@ class FrequencyEncoder(BaseEstimator, TransformerMixin):
             df[f"{col}_Freq"] = df[col].map(self.freq_maps_[col]).fillna(0.0)
             df.drop(columns=[col], inplace=True)
         return df
-
-# Column Transformer (Sklearn-native for numeric + OHE)
+# Column Transformer Sklearn-native for numeric + OHE
 def build_column_transformer() -> ColumnTransformer:
     numeric_pipeline = Pipeline([
         ("imputer", SimpleImputer(strategy="median")),
@@ -158,17 +123,13 @@ def build_column_transformer() -> ColumnTransformer:
         ],
         remainder="drop",
     )
-
-# Full Preprocessing Flow (returns X, y as numpy arrays)
+# Full Preprocessing Flow              returns X, y as numpy arrays
 def load_and_preprocess(
     path: Path = RAW_DATA_PATH,
     fit_encoders: bool = True,
     encoder_path: Path = ENCODER_PATH,
 ) -> tuple[np.ndarray, np.ndarray, ColumnTransformer]:
-    """
-    runnn preprocessing pipeline.
-    Returns:  X_transformed (np.ndarray), y (np.ndarray), column_transformer (fitted)
-    """
+    #runnn preprocessing pipeline  Returns: X_transformed (np.ndarray), y (np.ndarray), column_transformer (fitted)
     logger.info(f"Loading data from {path}")
     df = pd.read_csv(path)
     logger.info(f"Raw data shape: {df.shape}")
@@ -207,15 +168,10 @@ def load_and_preprocess(
     else:
         ct_saved = joblib.load(encoder_path.parent / "column_transformer.joblib")
         X_transformed = ct_saved.transform(df)
-
     logger.info(f"Return rate: {y.mean():.2%}")
     return X_transformed, y, ct
 
 def preprocess_single(input_dict: dict, encoder_path: Path = ENCODER_PATH) -> np.ndarray:
-    """
-    Preprocesses a single prediction input dict using saved encoders.
-    Used by the FastAPI inference endpoint.
-    """
     saved = joblib.load(encoder_path)
     ct = joblib.load(encoder_path.parent / "column_transformer.joblib")
     df = pd.DataFrame([input_dict])
