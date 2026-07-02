@@ -1,30 +1,20 @@
-"""
-Synthetic E-Commerce Dataset Generator
-Generates realistic transaction data with complex patterns for return prediction.
-"""
-
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 import random
-
 SEED = 42
 np.random.seed(SEED)
 random.seed(SEED)
-
 N_CUSTOMERS = 2000
 N_ORDERS = 15000
-
 CATEGORIES = ["Clothing", "Electronics", "Footwear", "Home & Kitchen", "Books", "Toys", "Beauty"]
 SHIPPING_METHODS = ["Express", "Standard", "Economy", "Next Day"]
 CARRIERS = ["FedEx", "UPS", "USPS", "DHL", "BlueDart"]
 SIZES = ["XS", "S", "M", "L", "XL", "XXL", None]  # None for non-clothing
-
 RETURN_REASONS = [
     "Wrong size", "Defective product", "Not as described",
     "Changed mind", "Received wrong item", "Quality issues", ""
 ]
-
 
 def generate_customers(n: int) -> pd.DataFrame:
     customer_ids = [f"CUST_{i:05d}" for i in range(1, n + 1)]
@@ -42,12 +32,10 @@ def generate_customers(n: int) -> pd.DataFrame:
         "Past_Returns": past_returns,
     })
 
-
 def generate_orders(customers_df: pd.DataFrame, n: int) -> pd.DataFrame:
     rows = []
     start_date = datetime(2022, 1, 1)
     end_date = datetime(2024, 6, 1)
-
     for i in range(n):
         cust = customers_df.sample(1).iloc[0]
         category = random.choice(CATEGORIES)
@@ -80,43 +68,33 @@ def generate_orders(customers_df: pd.DataFrame, n: int) -> pd.DataFrame:
             size_ordered = random.choice(SIZES[:-1])  # exclude None
             # ~8% chance customer bought two sizes (size mismatch risk)
             bought_two_sizes = random.random() < 0.08
-
         product_id = f"PROD_{random.randint(1000, 9999)}"
         review_score = random.choices([1, 2, 3, 4, 5], weights=[5, 10, 20, 35, 30])[0]
-
         # --- Return probability logic ---
         return_prob = 0.10  # base rate
-
         # Customer return history
         return_ratio = cust["Past_Returns"] / max(cust["Past_Purchases"], 1)
         return_prob += return_ratio * 0.35
-
         # Size mismatch — very strong signal
         if bought_two_sizes:
             return_prob += 0.45
-
         # Clothing is returned more
         if category == "Clothing":
             return_prob += 0.12
         elif category == "Electronics":
             return_prob += 0.08
-
         # High discount impulse buys returned more
         if discount >= 30:
             return_prob += 0.10
-
         # Low review → more returns
         if review_score <= 2:
             return_prob += 0.20
-
         # Long delivery → more returns
         if delivery_date and (delivery_date - order_date).days > 7:
             return_prob += 0.08
-
         # High price items returned less (deliberate buys)
         if price > 500:
             return_prob -= 0.05
-
         return_prob = max(0.02, min(return_prob, 0.95))
         is_returned = int(random.random() < return_prob)
 
@@ -148,23 +126,17 @@ def generate_orders(customers_df: pd.DataFrame, n: int) -> pd.DataFrame:
             "Return_Reason": return_reason,
             "Is_Returned": is_returned,
         })
-
     return pd.DataFrame(rows)
-
 
 def main():
     print("Generating synthetic e-commerce dataset...")
     customers = generate_customers(N_CUSTOMERS)
     orders = generate_orders(customers, N_ORDERS)
-
     output_path = "/return_predictor/data/ecommerce_returns.csv"
     orders.to_csv(output_path, index=False)
-
     print(f"Dataset saved: {output_path}")
     print(f"Shape: {orders.shape}")
     print(f"Return rate: {orders['Is_Returned'].mean():.2%}")
     print(orders.head(3).to_string())
-
-
 if __name__ == "__main__":
     main()
